@@ -2439,24 +2439,90 @@
         .web-splash-screen {
             position: fixed; inset: 0; z-index: 99999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: radial-gradient(circle at 25% 20%, rgba(59,179,255,0.20), transparent 55%),
-                        radial-gradient(circle at 78% 75%, rgba(255,176,32,0.18), transparent 55%),
-                        #060911;
+            background: radial-gradient(circle at 25% 20%, rgba(59,179,255,0.16), transparent 55%),
+                        radial-gradient(circle at 78% 75%, rgba(255,176,32,0.16), transparent 55%),
+                        #05070d;
             overflow: hidden;
-            transition: opacity .45s ease, visibility .45s ease;
+            transition: opacity .5s ease, visibility .5s ease;
         }
         .web-splash-screen.web-splash-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
         #webSplashCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+        .web-splash-icon-wrap {
+            position: relative; z-index: 2; width: 132px; height: 132px;
+            opacity: 0; transform: scale(0.4) rotate(-25deg);
+        }
+        .web-splash-icon-wrap.web-splash-icon-pop {
+            animation: webSplashIconPop .62s cubic-bezier(.2,1.4,.4,1) forwards;
+        }
+        @keyframes webSplashIconPop {
+            0%   { opacity: 0; transform: scale(0.4) rotate(-25deg); }
+            55%  { opacity: 1; transform: scale(1.12) rotate(4deg); }
+            80%  { transform: scale(0.94) rotate(-2deg); }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+        .web-splash-icon-wrap.web-splash-icon-settle { animation: webSplashIconFloat 2.6s ease-in-out infinite; }
+        @keyframes webSplashIconFloat {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50%      { transform: translateY(-6px) scale(1.015); }
+        }
+        .web-splash-icon-glow {
+            position: absolute; inset: -30%; border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,176,32,0.55), transparent 65%);
+            opacity: 0; filter: blur(6px);
+        }
+        .web-splash-icon-wrap.web-splash-icon-pop .web-splash-icon-glow {
+            animation: webSplashGlowPulse 1.8s ease-out .1s infinite;
+        }
+        @keyframes webSplashGlowPulse {
+            0%   { opacity: .75; transform: scale(0.85); }
+            60%  { opacity: .25; transform: scale(1.25); }
+            100% { opacity: .75; transform: scale(0.85); }
+        }
+        .web-splash-icon-ring {
+            position: absolute; inset: 8%; border-radius: 50%;
+            border: 7px solid transparent;
+            border-top-color: #FFB020; border-right-color: #FF8A20;
+            border-bottom-color: #FFB020; border-left-color: #FF8A20;
+            box-shadow: 0 0 22px rgba(255,138,32,0.55), inset 0 0 14px rgba(255,176,32,0.35);
+        }
+        .web-splash-icon-wrap.web-splash-icon-pop .web-splash-icon-ring {
+            animation: webSplashRingSpin 1s ease-out forwards;
+        }
+        @keyframes webSplashRingSpin {
+            0%   { transform: rotate(-140deg); opacity: 0; }
+            40%  { opacity: 1; }
+            100% { transform: rotate(0deg); opacity: 1; }
+        }
+        .web-splash-icon-core {
+            position: absolute; inset: 18%; border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #171d2c, #0b0e17 70%);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: inset 0 0 18px rgba(0,0,0,0.6);
+        }
+        .web-splash-icon-check {
+            width: 54%; height: 54%;
+        }
+        .web-splash-icon-check path {
+            fill: none; stroke: #22d47b; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round;
+            stroke-dasharray: 60; stroke-dashoffset: 60;
+            filter: drop-shadow(0 0 6px rgba(34,212,123,0.75));
+        }
+        .web-splash-icon-wrap.web-splash-icon-pop .web-splash-icon-check path {
+            animation: webSplashCheckDraw .45s ease-out .45s forwards;
+        }
+        @keyframes webSplashCheckDraw { to { stroke-dashoffset: 0; } }
         .web-splash-welcome, .web-splash-title {
             position: relative; z-index: 2;
             opacity: 0; transform: translateY(10px) scale(0.96);
             transition: opacity .45s ease, transform .45s ease;
             font-family: inherit; text-align: center; color: #fff;
         }
+        .web-splash-welcome { margin-top: 22px; }
+        .web-splash-title { margin-top: 6px; }
         .web-splash-welcome.web-splash-show, .web-splash-title.web-splash-show {
             opacity: 1; transform: translateY(0) scale(1);
         }
-        .web-splash-welcome { font-size: 1rem; color: #9fb3d9; margin-bottom: 6px; letter-spacing: .5px; }
+        .web-splash-welcome { font-size: 1rem; color: #9fb3d9; letter-spacing: .5px; }
         .web-splash-title { font-size: 1.6rem; font-weight: 900; background: linear-gradient(90deg,#3BB3FF,#FFB020);
             -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
     </style>
@@ -3381,26 +3447,85 @@
     <!-- ============= شاشة السبلاش المتحركة عند فتح الموقع ============= -->
     <div id="webSplashScreen" class="web-splash-screen">
         <canvas id="webSplashCanvas"></canvas>
+        <div id="webSplashIconWrap" class="web-splash-icon-wrap">
+            <div class="web-splash-icon-glow"></div>
+            <div class="web-splash-icon-ring"></div>
+            <div class="web-splash-icon-core">
+                <svg class="web-splash-icon-check" viewBox="0 0 36 36">
+                    <path d="M8 19 L15 26 L28 11" />
+                </svg>
+            </div>
+        </div>
         <div id="webSplashWelcome" class="web-splash-welcome">أهلاً بك في</div>
         <div id="webSplashTitle" class="web-splash-title">منصة الإنتاجية المتقدمة</div>
     </div>
     <script>
         // ============================================================================
-        // أنيميشن السبلاش (نفس فكرة نسخة الأندرويد الأصلية): أيقونتين (⏱️ مؤقت التركيز
-        // و ✓ إنجاز المهام) بيطيروا من طرفين مختلفين ويتصادموا في النص — التصادم بيعمل
-        // ومضة + انفجار جزيئات، والجزيئات بتتجمع بعدين على نص "أهلاً بك في" واسم التطبيق.
+        // أنيميشن السبلاش (نسخة جديدة): أيقونة التطبيق نفسها (حلقة برتقالية + علامة
+        // صح خضراء) بتظهر بـ"pop" مرن مع توهج ونبض، وحواليها انفجار جزيئات نجمية
+        // (نفس ألوان الأيقونة: برتقالي/أزرق/أخضر) بتتناثر وترجع تتجمع تجاه اسم
+        // التطبيق. الصوت اتصنّع بالكامل بالكود عن طريق Web Audio API (مفيش أي ملف
+        // صوتي خارجي): نغمة "pop" لطيفة وقت ظهور الأيقونة، ونغمتين رقيقتين صاعدتين
+        // (chime) وقت ظهور نص الترحيب والعنوان.
         // ============================================================================
         (function runWebSplash() {
             const screenEl = document.getElementById('webSplashScreen');
             const canvas = document.getElementById('webSplashCanvas');
+            const iconWrap = document.getElementById('webSplashIconWrap');
             const welcomeEl = document.getElementById('webSplashWelcome');
             const titleEl = document.getElementById('webSplashTitle');
             if (!screenEl || !canvas) return;
 
             const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const TOTAL = 2200, FLY_END = 780, FLASH_DUR = 260, WELCOME_T = 900, TITLE_T = 1180, HOLD_END = 2600;
+            const ICON_T = 60, WELCOME_T = 760, TITLE_T = 1000, HOLD_END = 2500;
+
+            // -------------------- الصوت (Web Audio API — بدون ملفات خارجية) --------------------
+            let actx = null;
+            function getAudioCtx() {
+                if (actx) return actx;
+                try {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if (AC) actx = new AC();
+                } catch (e) { /* الصوت اختياري، لو اتمنع من المتصفح نكمل بصمت */ }
+                return actx;
+            }
+            function playTone(freqStart, freqEnd, startAt, dur, gainPeak, type) {
+                const ac = getAudioCtx();
+                if (!ac) return;
+                const osc = ac.createOscillator();
+                const gain = ac.createGain();
+                osc.type = type || 'sine';
+                const t0 = ac.currentTime + startAt;
+                osc.frequency.setValueAtTime(freqStart, t0);
+                if (freqEnd && freqEnd !== freqStart) {
+                    osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 1), t0 + dur);
+                }
+                gain.gain.setValueAtTime(0.0001, t0);
+                gain.gain.exponentialRampToValueAtTime(gainPeak, t0 + Math.min(0.02, dur * 0.3));
+                gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+                osc.connect(gain); gain.connect(ac.destination);
+                osc.start(t0); osc.stop(t0 + dur + 0.02);
+            }
+            function playPopSound() {
+                // نغمة "pop" قصيرة وقت ظهور الأيقونة: تردد صاعد سريع بيعطي إحساس انبثاق
+                playTone(180, 620, 0, 0.16, 0.22, 'sine');
+                playTone(900, 300, 0.02, 0.12, 0.06, 'triangle');
+            }
+            function playChime(delay, freq) {
+                // نغمة رقيقة (chime) وقت ظهور نصوص الترحيب/العنوان
+                playTone(freq, freq * 1.5, delay, 0.35, 0.09, 'sine');
+            }
+            function unlockAudioOnce() {
+                const ac = getAudioCtx();
+                if (ac && ac.state === 'suspended') ac.resume().catch(() => {});
+                window.removeEventListener('pointerdown', unlockAudioOnce);
+                window.removeEventListener('keydown', unlockAudioOnce);
+            }
+            window.addEventListener('pointerdown', unlockAudioOnce, { once: true });
+            window.addEventListener('keydown', unlockAudioOnce, { once: true });
 
             if (reduceMotion) {
+                iconWrap.classList.add('web-splash-icon-pop');
                 welcomeEl.classList.add('web-splash-show');
                 titleEl.classList.add('web-splash-show');
                 setTimeout(finish, 900);
@@ -3420,23 +3545,41 @@
             window.addEventListener('resize', resize);
 
             const cx = () => canvas.clientWidth / 2;
-            const cy = () => canvas.clientHeight / 2 - 40;
+            const cy = () => canvas.clientHeight / 2 - 66;
 
-            const N_PARTICLES = 26;
+            const COLORS = ['#FFB020', '#FF8A20', '#3BB3FF', '#22d47b'];
+            const N_PARTICLES = 34;
             const particles = [];
             for (let i = 0; i < N_PARTICLES; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const speed = 60 + Math.random() * 120;
+                const speed = 90 + Math.random() * 150;
+                const isStar = i % 5 === 0;
                 particles.push({
                     vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-                    color: i % 2 === 0 ? '#FFB020' : '#3BB3FF',
-                    radius: 2 + Math.random() * 3,
-                    delay: Math.random() * 150,
-                    duration: 480 + Math.random() * 160
+                    color: COLORS[i % COLORS.length],
+                    radius: isStar ? (3 + Math.random() * 2.5) : (1.6 + Math.random() * 2.4),
+                    isStar,
+                    rot: Math.random() * Math.PI,
+                    delay: ICON_T + 120 + Math.random() * 180,
+                    duration: 620 + Math.random() * 260
                 });
             }
 
-            let welcomeFired = false, titleFired = false, finished = false;
+            function drawStar(x, y, r, rot, color, alpha) {
+                ctx.save();
+                ctx.translate(x, y); ctx.rotate(rot);
+                ctx.globalAlpha = alpha; ctx.fillStyle = color;
+                ctx.beginPath();
+                for (let i = 0; i < 4; i++) {
+                    const a = (Math.PI / 2) * i;
+                    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+                    ctx.lineTo(Math.cos(a + Math.PI / 4) * r * 0.4, Math.sin(a + Math.PI / 4) * r * 0.4);
+                }
+                ctx.closePath(); ctx.fill();
+                ctx.restore();
+            }
+
+            let iconFired = false, welcomeFired = false, titleFired = false, finished = false;
             const start = performance.now();
 
             function draw(now) {
@@ -3446,52 +3589,41 @@
 
                 const midX = cx(), midY = cy();
 
-                if (t <= FLY_END) {
-                    // الأيقونتين بيطيروا من الطرفين للنص
-                    const p = Math.min(1, t / FLY_END);
-                    const ease = 1 - Math.pow(1 - p, 3);
-                    const leftX = -60 + ease * (midX - -60 - 20);
-                    const rightX = (W + 60) - ease * ((W + 60) - midX - 20);
-                    ctx.font = '38px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.globalAlpha = 0.55 + 0.45 * ease;
-                    ctx.fillText('⏱️', leftX, midY);
-                    ctx.fillText('✅', rightX, midY);
-                    ctx.globalAlpha = 1;
-                } else {
-                    // فلاش التصادم
-                    const flashP = Math.min(1, (t - FLY_END) / FLASH_DUR);
-                    if (flashP < 1) {
-                        const r = 10 + flashP * 90;
-                        const grad = ctx.createRadialGradient(midX, midY, 0, midX, midY, r);
-                        grad.addColorStop(0, 'rgba(255,255,255,' + (1 - flashP) + ')');
-                        grad.addColorStop(1, 'rgba(255,255,255,0)');
-                        ctx.fillStyle = grad;
-                        ctx.beginPath(); ctx.arc(midX, midY, r, 0, Math.PI * 2); ctx.fill();
-                    }
-
-                    // الجزيئات بتنطلق من مركز الاصطدام وبعدين تتجمع تجاه نص العنوان
-                    const targetX = W / 2, targetY = H / 2 + 70;
-                    particles.forEach(pt => {
-                        const pStart = FLY_END + pt.delay;
-                        if (t < pStart) return;
-                        const pt2 = Math.min(1, (t - pStart) / pt.duration);
-                        const burstX = midX + pt.vx * Math.min(pt2, 0.4) * 1.4;
-                        const burstY = midY + pt.vy * Math.min(pt2, 0.4) * 1.4;
-                        const convergeP = Math.max(0, (pt2 - 0.35) / 0.65);
-                        const ease2 = convergeP * convergeP;
-                        const x = burstX + (targetX - burstX) * ease2;
-                        const y = burstY + (targetY - burstY) * ease2;
-                        ctx.globalAlpha = Math.max(0, 1 - pt2 * 0.85);
-                        ctx.fillStyle = pt.color;
-                        ctx.beginPath(); ctx.arc(x, y, pt.radius * (1 - ease2 * 0.5), 0, Math.PI * 2); ctx.fill();
-                    });
-                    ctx.globalAlpha = 1;
+                if (!iconFired && t >= ICON_T) {
+                    iconFired = true;
+                    iconWrap.classList.add('web-splash-icon-pop');
+                    playPopSound();
+                    setTimeout(() => iconWrap.classList.add('web-splash-icon-settle'), 620);
                 }
 
-                if (!welcomeFired && t >= WELCOME_T) { welcomeFired = true; welcomeEl.classList.add('web-splash-show'); }
-                if (!titleFired && t >= TITLE_T) { titleFired = true; titleEl.classList.add('web-splash-show'); }
+                // الجزيئات بتنطلق من حوالين الأيقونة وبعدين تتجمع تجاه نص العنوان
+                const targetX = W / 2, targetY = H / 2 + 96;
+                particles.forEach(pt => {
+                    if (t < pt.delay) return;
+                    const p = Math.min(1, (t - pt.delay) / pt.duration);
+                    const burstX = midX + pt.vx * Math.min(p, 0.4) * 1.5;
+                    const burstY = midY + pt.vy * Math.min(p, 0.4) * 1.5;
+                    const convergeP = Math.max(0, (p - 0.35) / 0.65);
+                    const ease2 = convergeP * convergeP;
+                    const x = burstX + (targetX - burstX) * ease2;
+                    const y = burstY + (targetY - burstY) * ease2;
+                    const alpha = Math.max(0, 1 - p * 0.9);
+                    if (pt.isStar) {
+                        drawStar(x, y, pt.radius * (1 - ease2 * 0.5), pt.rot + p * 2, pt.color, alpha);
+                    } else {
+                        ctx.globalAlpha = alpha;
+                        ctx.fillStyle = pt.color;
+                        ctx.beginPath(); ctx.arc(x, y, pt.radius * (1 - ease2 * 0.5), 0, Math.PI * 2); ctx.fill();
+                    }
+                });
+                ctx.globalAlpha = 1;
+
+                if (!welcomeFired && t >= WELCOME_T) {
+                    welcomeFired = true; welcomeEl.classList.add('web-splash-show'); playChime(0, 660);
+                }
+                if (!titleFired && t >= TITLE_T) {
+                    titleFired = true; titleEl.classList.add('web-splash-show'); playChime(0, 880);
+                }
 
                 if (t >= HOLD_END) { finish(); return; }
                 requestAnimationFrame(draw);
