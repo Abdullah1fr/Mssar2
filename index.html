@@ -2433,7 +2433,34 @@
             .brand-title { font-size: 0.9rem; }
         }
     </style>
-    
+
+    <!-- ============= سبلاش الفتح المتحرك ============= -->
+    <style>
+        .web-splash-screen {
+            position: fixed; inset: 0; z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: radial-gradient(circle at 25% 20%, rgba(59,179,255,0.20), transparent 55%),
+                        radial-gradient(circle at 78% 75%, rgba(255,176,32,0.18), transparent 55%),
+                        #060911;
+            overflow: hidden;
+            transition: opacity .45s ease, visibility .45s ease;
+        }
+        .web-splash-screen.web-splash-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        #webSplashCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+        .web-splash-welcome, .web-splash-title {
+            position: relative; z-index: 2;
+            opacity: 0; transform: translateY(10px) scale(0.96);
+            transition: opacity .45s ease, transform .45s ease;
+            font-family: inherit; text-align: center; color: #fff;
+        }
+        .web-splash-welcome.web-splash-show, .web-splash-title.web-splash-show {
+            opacity: 1; transform: translateY(0) scale(1);
+        }
+        .web-splash-welcome { font-size: 1rem; color: #9fb3d9; margin-bottom: 6px; letter-spacing: .5px; }
+        .web-splash-title { font-size: 1.6rem; font-weight: 900; background: linear-gradient(90deg,#3BB3FF,#FFB020);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+
     <!-- تنسيقات لوحة الإنتاجية الاحترافية -->
     <style>
         .pro-dashboard { display: flex; flex-direction: column; gap: 16px; animation: fadeIn 0.4s ease-out; }
@@ -3350,6 +3377,139 @@
 </head>
 
 <body>
+
+    <!-- ============= شاشة السبلاش المتحركة عند فتح الموقع ============= -->
+    <div id="webSplashScreen" class="web-splash-screen">
+        <canvas id="webSplashCanvas"></canvas>
+        <div id="webSplashWelcome" class="web-splash-welcome">أهلاً بك في</div>
+        <div id="webSplashTitle" class="web-splash-title">منصة الإنتاجية المتقدمة</div>
+    </div>
+    <script>
+        // ============================================================================
+        // أنيميشن السبلاش (نفس فكرة نسخة الأندرويد الأصلية): أيقونتين (⏱️ مؤقت التركيز
+        // و ✓ إنجاز المهام) بيطيروا من طرفين مختلفين ويتصادموا في النص — التصادم بيعمل
+        // ومضة + انفجار جزيئات، والجزيئات بتتجمع بعدين على نص "أهلاً بك في" واسم التطبيق.
+        // ============================================================================
+        (function runWebSplash() {
+            const screenEl = document.getElementById('webSplashScreen');
+            const canvas = document.getElementById('webSplashCanvas');
+            const welcomeEl = document.getElementById('webSplashWelcome');
+            const titleEl = document.getElementById('webSplashTitle');
+            if (!screenEl || !canvas) return;
+
+            const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const TOTAL = 2200, FLY_END = 780, FLASH_DUR = 260, WELCOME_T = 900, TITLE_T = 1180, HOLD_END = 2600;
+
+            if (reduceMotion) {
+                welcomeEl.classList.add('web-splash-show');
+                titleEl.classList.add('web-splash-show');
+                setTimeout(finish, 900);
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            let dpr = Math.max(1, window.devicePixelRatio || 1);
+            let W = 0, H = 0;
+            function resize() {
+                W = canvas.clientWidth = window.innerWidth;
+                H = canvas.clientHeight = window.innerHeight;
+                canvas.width = W * dpr; canvas.height = H * dpr;
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const cx = () => canvas.clientWidth / 2;
+            const cy = () => canvas.clientHeight / 2 - 40;
+
+            const N_PARTICLES = 26;
+            const particles = [];
+            for (let i = 0; i < N_PARTICLES; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 60 + Math.random() * 120;
+                particles.push({
+                    vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                    color: i % 2 === 0 ? '#FFB020' : '#3BB3FF',
+                    radius: 2 + Math.random() * 3,
+                    delay: Math.random() * 150,
+                    duration: 480 + Math.random() * 160
+                });
+            }
+
+            let welcomeFired = false, titleFired = false, finished = false;
+            const start = performance.now();
+
+            function draw(now) {
+                if (finished) return;
+                const t = now - start;
+                ctx.clearRect(0, 0, W, H);
+
+                const midX = cx(), midY = cy();
+
+                if (t <= FLY_END) {
+                    // الأيقونتين بيطيروا من الطرفين للنص
+                    const p = Math.min(1, t / FLY_END);
+                    const ease = 1 - Math.pow(1 - p, 3);
+                    const leftX = -60 + ease * (midX - -60 - 20);
+                    const rightX = (W + 60) - ease * ((W + 60) - midX - 20);
+                    ctx.font = '38px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.globalAlpha = 0.55 + 0.45 * ease;
+                    ctx.fillText('⏱️', leftX, midY);
+                    ctx.fillText('✅', rightX, midY);
+                    ctx.globalAlpha = 1;
+                } else {
+                    // فلاش التصادم
+                    const flashP = Math.min(1, (t - FLY_END) / FLASH_DUR);
+                    if (flashP < 1) {
+                        const r = 10 + flashP * 90;
+                        const grad = ctx.createRadialGradient(midX, midY, 0, midX, midY, r);
+                        grad.addColorStop(0, 'rgba(255,255,255,' + (1 - flashP) + ')');
+                        grad.addColorStop(1, 'rgba(255,255,255,0)');
+                        ctx.fillStyle = grad;
+                        ctx.beginPath(); ctx.arc(midX, midY, r, 0, Math.PI * 2); ctx.fill();
+                    }
+
+                    // الجزيئات بتنطلق من مركز الاصطدام وبعدين تتجمع تجاه نص العنوان
+                    const targetX = W / 2, targetY = H / 2 + 70;
+                    particles.forEach(pt => {
+                        const pStart = FLY_END + pt.delay;
+                        if (t < pStart) return;
+                        const pt2 = Math.min(1, (t - pStart) / pt.duration);
+                        const burstX = midX + pt.vx * Math.min(pt2, 0.4) * 1.4;
+                        const burstY = midY + pt.vy * Math.min(pt2, 0.4) * 1.4;
+                        const convergeP = Math.max(0, (pt2 - 0.35) / 0.65);
+                        const ease2 = convergeP * convergeP;
+                        const x = burstX + (targetX - burstX) * ease2;
+                        const y = burstY + (targetY - burstY) * ease2;
+                        ctx.globalAlpha = Math.max(0, 1 - pt2 * 0.85);
+                        ctx.fillStyle = pt.color;
+                        ctx.beginPath(); ctx.arc(x, y, pt.radius * (1 - ease2 * 0.5), 0, Math.PI * 2); ctx.fill();
+                    });
+                    ctx.globalAlpha = 1;
+                }
+
+                if (!welcomeFired && t >= WELCOME_T) { welcomeFired = true; welcomeEl.classList.add('web-splash-show'); }
+                if (!titleFired && t >= TITLE_T) { titleFired = true; titleEl.classList.add('web-splash-show'); }
+
+                if (t >= HOLD_END) { finish(); return; }
+                requestAnimationFrame(draw);
+            }
+            requestAnimationFrame(draw);
+
+            function finish() {
+                if (finished) return;
+                finished = true;
+                screenEl.classList.add('web-splash-hidden');
+                setTimeout(() => { if (screenEl && screenEl.parentNode) screenEl.remove(); }, 500);
+            }
+
+            // شبكة أمان: لو أي حاجة اتعطلت (تاب مش ظاهر، تبويب في الخلفية...)، السبلاش
+            // بيتشال أوتوماتيك بعد أقصى مدة معقولة عشان محدش يفضل واقف عليه للأبد
+            setTimeout(finish, HOLD_END + 400);
+        })();
+    </script>
 
     <!-- شاشة قفل التطبيق بكلمة مرور -->
     <div id="appLockScreen" class="app-lock-screen">
@@ -5981,6 +6141,136 @@
     <audio id="customBgAudio" loop ontimeupdate="updateAudioSeekUI()" onloadedmetadata="updateAudioSeekUI()" onplay="updateAudioSeekUI()" onpause="updateAudioSeekUI()"></audio>
     <audio id="joyfulAlarmSound"></audio>
 <script>
+// ============================================================================
+// طبقة توافق المنبهات على الويب — لو التطبيق شغال على متصفح عادي أو PWA مثبّتة
+// (مش جوه تطبيق الأندرويد الأصلي، يعني window.AndroidNative مش موجود أصلًا)،
+// بنعرّف نسخة بديلة منه بتغطي دوال المنبهات بس (مش الكاميرا/الملفات/الاختصارات
+// إلخ) باستخدام Notifications API + Service Worker. بكده كل الأكواد اللي في
+// الملف اللي بتنادي AndroidNative.scheduleAlarm/scheduleTaskReminder/... بتشتغل
+// عادي من غير ما نلمس كل نداء لوحده.
+//
+// القيود الحقيقية اللي لازم نكون صرحاء بيها: المنبه ده هيرن أكيد لو التاب فاتح
+// (حتى لو التطبيق مش قدامك دلوقتي على شاشة تانية)، وهيرن كمان لو التطبيق مقفول
+// بس متثبّت كـ PWA والمتصفح لسه شغال بريفريه. لو المتصفح نفسه مقفول تمامًا أو
+// الجهاز اتقفل، مفيش ضمان بدقة ميعاد زي منبه أندرويد الأصلي — أقصى حاجة بنعملها
+// إننا نتأكد ونبلّغ فورًا بأي منبه فاته معاده أول ما المستخدم يرجع يفتح التاب.
+// ============================================================================
+(function initWebAlarmPolyfill() {
+    if (window.AndroidNative) return; // إحنا فعليًا جوه تطبيق الأندرويد، سيبه زي ما هو
+
+    const STORAGE_KEY = 'web_native_alarms_v1';
+    const timers = {}; // key -> setTimeout handle (لحظة التاب فاتح)
+    const MAX_DELAY = 24 * 60 * 60 * 1000; // أقصى مدة آمنة لـ setTimeout عشان نتفادى overflow
+
+    function loadAll() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { return {}; }
+    }
+    function saveAll(map) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(map)); } catch (e) {}
+    }
+
+    let permissionAsked = false;
+    async function ensurePermission() {
+        if (!('Notification' in window)) return false;
+        if (Notification.permission === 'granted') return true;
+        if (Notification.permission === 'denied') return false;
+        if (permissionAsked) return false;
+        permissionAsked = true;
+        try { const r = await Notification.requestPermission(); return r === 'granted'; } catch (e) { return false; }
+    }
+
+    async function fireNotification(title, body, tag) {
+        const ok = await ensurePermission();
+        if (!ok) return;
+        try {
+            if (navigator.serviceWorker) {
+                const reg = await navigator.serviceWorker.ready;
+                await reg.showNotification(title, {
+                    body, tag, icon: 'icon-192.png', badge: 'icon-192.png',
+                    requireInteraction: true, vibrate: [200, 100, 200]
+                });
+                return;
+            }
+        } catch (e) { /* نكمل على new Notification تحت */ }
+        try { new Notification(title, { body, tag, icon: 'icon-192.png' }); } catch (e) {}
+    }
+
+    function armTimer(key, entry) {
+        if (timers[key]) { clearTimeout(timers[key]); delete timers[key]; }
+        const delay = entry.timestamp - Date.now();
+        if (delay <= 0) return; // فات معاده، هيتبلّغ في أول sweep
+        if (delay > MAX_DELAY) {
+            timers[key] = setTimeout(() => armTimer(key, entry), MAX_DELAY);
+            return;
+        }
+        timers[key] = setTimeout(() => {
+            delete timers[key];
+            fireNotification(entry.title, entry.body, key);
+            const map = loadAll();
+            delete map[key];
+            saveAll(map);
+        }, delay);
+    }
+
+    function scheduleEntry(kind, id, title, body, timestamp) {
+        if (!timestamp) return;
+        ensurePermission();
+        const key = kind + ':' + id;
+        const map = loadAll();
+        map[key] = { kind, id, title, body, timestamp };
+        saveAll(map);
+        armTimer(key, map[key]);
+    }
+
+    function cancelEntry(kind, id) {
+        const key = kind + ':' + id;
+        const map = loadAll();
+        if (map[key]) { delete map[key]; saveAll(map); }
+        if (timers[key]) { clearTimeout(timers[key]); delete timers[key]; }
+    }
+
+    // بيدوّر على أي منبه فات معاده والتاب كان مقفول وقتها، ويبلّغ عنه فورًا، وبيعيد تسليح
+    // الباقي — بتتنادى أول ما الصفحة تحمّل وأول ما التاب يبقى مرئي تاني
+    function rearmAllFromStorage() {
+        const map = loadAll();
+        const now = Date.now();
+        let changed = false;
+        Object.keys(map).forEach((key) => {
+            const entry = map[key];
+            if (entry.timestamp <= now) {
+                fireNotification(entry.title, entry.body, key);
+                delete map[key];
+                changed = true;
+            } else {
+                armTimer(key, entry);
+            }
+        });
+        if (changed) saveAll(map);
+    }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) rearmAllFromStorage(); });
+
+    window.AndroidNative = {
+        scheduleAlarm: (id, label, timestamp) => scheduleEntry('alarm', id, '⏰ ' + (label || 'منبه'), 'حان وقت المنبه اللي ضبطته', timestamp),
+        cancelAlarm: (id) => cancelEntry('alarm', id),
+        scheduleTaskReminder: (id, title, timestamp) => scheduleEntry('taskReminder', id, '🔔 تذكير بمهمة', title || 'عندك مهمة قربت معادها', timestamp),
+        cancelTaskReminder: (id) => cancelEntry('taskReminder', id),
+        scheduleSelfNote: (id, text, timestamp) => scheduleEntry('selfNote', id, '🗒️ ذكّرني بحاجة', text || '', timestamp),
+        cancelSelfNote: (id) => cancelEntry('selfNote', id),
+        scheduleFocusTimerAlarm: (id, title, timestamp) => scheduleEntry('focusTimer', 'focus', '🎯 خلصت جلسة التركيز', title || '', timestamp),
+        cancelFocusTimerAlarm: () => cancelEntry('focusTimer', 'focus'),
+        hasExactAlarmPermission: () => true
+        // ملحوظة: عمدًا مش بنعرّف isBiometricAvailable/authenticateWithBiometric هنا —
+        // البصمة على الويب ليها مسارها الخاص (WebAuthn) في initBiometricLockSettingsUI،
+        // وغياب الدالتين دول من هنا هو اللي بيخلي الكود يستخدم WebAuthn صح
+    };
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        rearmAllFromStorage();
+    } else {
+        document.addEventListener('DOMContentLoaded', rearmAllFromStorage);
+    }
+})();
+
 let categories = JSON.parse(localStorage.getItem('app_categories')) || ['📚 دراسة', '💼 عمل', '🏋️ صحة', '🏠 شخصي', '🕌 الصلاة'];
     let currentCategoryFilter = 'all';
     let tasks = JSON.parse(localStorage.getItem('app_tasks')) || [];
@@ -6538,7 +6828,7 @@ let categories = JSON.parse(localStorage.getItem('app_categories')) || ['📚 د
     // استثناء توفير البطارية، وبعدها بثانية بتفتح صفحة "بدء التشغيل التلقائي" الخاصة
     // بالشركة المصنّعة لو متاحة (شاومي/هواوي/أوبو/فيفو) عشان الحماية تبقى كاملة
     function openBackgroundReliabilitySettings() {
-        if (!window.AndroidNative) { showToast('الميزة دي شغالة بس جوه تطبيق الأندرويد'); return; }
+        if (!(window.AndroidNative && typeof AndroidNative.requestIgnoreBatteryOptimizations === 'function')) { showToast('الميزة دي شغالة بس جوه تطبيق الأندرويد'); return; }
         if (typeof AndroidNative.requestIgnoreBatteryOptimizations === 'function') {
             AndroidNative.requestIgnoreBatteryOptimizations();
         }
@@ -13984,8 +14274,10 @@ function restoreTimerState() {
     // بيتنفذ فورًا عند تحميل السكربت، قبل ما نستنى حدث onload، عشان نغطي الشاشة بسرعة لو القفل مفعل
     function checkAppLock() {
         // لو المستخدم فعّل قفل البصمة بس بعدين مسح كل بصماته من إعدادات الجهاز، نلغي
-        // الخيار تلقائيًا هنا عشان محدش يتقفل بره التطبيق بشكل دائم من غير أي طريقة فتح
-        if (isBiometricLockEnabled() && !isBiometricHardwareAvailable()) {
+        // الخيار تلقائيًا هنا عشان محدش يتقفل بره التطبيق بشكل دائم من غير أي طريقة فتح.
+        // على الويب (WebAuthn) الفحص async، فمش بنلغي هنا إلا لو عرفنا فعليًا إن الجهاز
+        // مفيهوش مستشعر (بعد ما checkWebAuthnPlatformAvailable يخلص) — التفاصيل جوه triggerBiometricUnlock
+        if (isBiometricLockEnabled() && window.AndroidNative && !isBiometricHardwareAvailable()) {
             localStorage.removeItem('app_lock_biometric_enabled');
         }
 
@@ -14012,32 +14304,71 @@ function restoreTimerState() {
     }
 
     // =============================
-    // قفل ببصمة الإصبع (بيتحقق فعليًا من نظام الأندرويد نفسه عن طريق AndroidNative، مفيش
-    // أي بيانات بصمة بتتخزن أو تتشاف من جوه التطبيق خالص)
+    // قفل ببصمة الإصبع
+    // جوه تطبيق الأندرويد: بيتحقق فعليًا من نظام الأندرويد نفسه عن طريق AndroidNative.
+    // على الويب (متصفح عادي أو PWA مثبّت): بنستخدم WebAuthn، اللي بيفتح نفس بروبمت
+    // البصمة/الوجه/القفل الحقيقي بتاع نظام الجهاز (أندرويد كروم، ويندوز هيلو، تتش آي دي).
+    // في الحالتين مفيش أي بيانات بصمة بتتخزن أو تتشاف من جوه التطبيق خالص — التحقق كله
+    // بيتم جوه نظام التشغيل، وإحنا بس بنستلم "نجح" أو "فشل".
     // =============================
+
+    function _b64urlToBuffer(b64url) {
+        const pad = '='.repeat((4 - b64url.length % 4) % 4);
+        const b64 = (b64url + pad).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(b64);
+        const arr = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+        return arr.buffer;
+    }
+    function _bufferToB64url(buf) {
+        const bytes = new Uint8Array(buf);
+        let str = '';
+        for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+        return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    // متاح بس لو المتصفح بيدعم WebAuthn أصلًا (كل المتصفحات الحديثة بتدعمه على HTTPS)
+    function isWebAuthnSupported() {
+        return !!(window.PublicKeyCredential && navigator.credentials &&
+            navigator.credentials.create && navigator.credentials.get);
+    }
+
+    // null = لسه معملناش الفحص، true/false = نتيجة آخر فحص فعلي للجهاز (async)
+    let _webAuthnHwAvailable = null;
+    async function checkWebAuthnPlatformAvailable() {
+        if (!isWebAuthnSupported()) { _webAuthnHwAvailable = false; return false; }
+        try {
+            _webAuthnHwAvailable = !!(await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+        } catch (e) { _webAuthnHwAvailable = false; }
+        return _webAuthnHwAvailable;
+    }
+
     function isBiometricHardwareAvailable() {
         try {
-            return !!(window.AndroidNative && typeof AndroidNative.isBiometricAvailable === 'function' && AndroidNative.isBiometricAvailable());
-        } catch (e) { return false; }
+            if (window.AndroidNative && typeof AndroidNative.isBiometricAvailable === 'function') {
+                return !!AndroidNative.isBiometricAvailable();
+            }
+        } catch (e) { /* تجاهل */ }
+        return _webAuthnHwAvailable === true;
     }
 
     function isBiometricLockEnabled() { return localStorage.getItem('app_lock_biometric_enabled') === '1'; }
 
-    // بيرجع true لو الجسر الأصلي (AndroidNative) فعليًا بيوفر دوال البصمة، بغض النظر
-    // عن وجود مستشعر بصمة على الجهاز من عدمه — ده بس بيتأكد إن الميزة متطبقة فعليًا
-    // في الكود الأصلي (Kotlin) قبل ما نوري المستخدم أي حاجة عنها
+    // بيرجع true لو فيه أي طريقة بصمة متاحة أصلًا (AndroidNative جوه التطبيق، أو WebAuthn
+    // على المتصفح) — بغض النظر عن وجود مستشعر فعلي على الجهاز من عدمه، ده بس بيتأكد إن
+    // الميزة نفسها متاحة قبل ما نوري المستخدم أي حاجة عنها
     function isBiometricBridgeImplemented() {
         try {
-            return !!(window.AndroidNative &&
+            if (window.AndroidNative &&
                 typeof AndroidNative.isBiometricAvailable === 'function' &&
-                typeof AndroidNative.authenticateWithBiometric === 'function');
-        } catch (e) { return false; }
+                typeof AndroidNative.authenticateWithBiometric === 'function') return true;
+        } catch (e) { /* تجاهل */ }
+        return isWebAuthnSupported();
     }
 
-    // بيتنفذ كل ما نفتح الإعدادات — لو الجسر الأصلي مش متطبق الميزة دي أصلًا، بنخفي
-    // القسم كله بدل ما نوري توجل هيفشل دايمًا ويدي رسالة مضللة. لو الجسر متطبق، القسم
-    // بيفضل ظاهر دايمًا، وبس وقت الدوس على التفعيل بنتأكد فعليًا لو الجهاز عنده مستشعر بصمة أو لأ
-    function initBiometricLockSettingsUI() {
+    // بيتنفذ كل ما نفتح الإعدادات — لو مفيش أي طريقة بصمة متاحة أصلًا، بنخفي القسم كله
+    // بدل ما نوري توجل هيفشل دايمًا ويدي رسالة مضللة
+    async function initBiometricLockSettingsUI() {
         const section = document.getElementById('biometricLockSettingsSection');
         const toggle = document.getElementById('biometricLockToggle');
         if (!section || !toggle) return;
@@ -14047,15 +14378,30 @@ function restoreTimerState() {
             return;
         }
         section.style.display = '';
-        if (!isBiometricHardwareAvailable() && isBiometricLockEnabled()) {
-            localStorage.removeItem('app_lock_biometric_enabled');
-        }
         toggle.checked = isBiometricLockEnabled();
+        if (!window.AndroidNative) {
+            // فحص الجهاز على الويب async — أول ما يخلص، بنحدّث الحالة فعليًا
+            await checkWebAuthnPlatformAvailable();
+            if (!isBiometricHardwareAvailable() && isBiometricLockEnabled()) {
+                localStorage.removeItem('app_lock_biometric_enabled');
+                toggle.checked = false;
+            }
+        } else if (!isBiometricHardwareAvailable() && isBiometricLockEnabled()) {
+            localStorage.removeItem('app_lock_biometric_enabled');
+            toggle.checked = false;
+        }
     }
 
-    function onBiometricLockToggleChange(checked) {
+    async function onBiometricLockToggleChange(checked) {
         const toggle = document.getElementById('biometricLockToggle');
-        if (checked) {
+        if (!checked) {
+            localStorage.removeItem('app_lock_biometric_enabled');
+            localStorage.removeItem('webauthn_cred_id');
+            showToast('اتلغى الفتح بالبصمة');
+            return;
+        }
+
+        if (window.AndroidNative && typeof AndroidNative.authenticateWithBiometric === 'function') {
             if (!isBiometricHardwareAvailable()) {
                 showToast('جهازك لا يحتوي على مستشعر بصمة ⚠️');
                 if (toggle) toggle.checked = false;
@@ -14072,48 +14418,123 @@ function restoreTimerState() {
                 }
             };
             AndroidNative.authenticateWithBiometric('setup');
-        } else {
-            localStorage.removeItem('app_lock_biometric_enabled');
-            showToast('اتلغى الفتح بالبصمة');
+            return;
+        }
+
+        // مسار الويب: تسجيل جهاز عن طريق WebAuthn (بدون أي سيرفر — بيانات الاعتماد بتفضل
+        // على الجهاز بس، ومحدش عنده وصول ليها غير نظام التشغيل نفسه)
+        if (!isWebAuthnSupported()) {
+            showToast('البصمة مش مدعومة على المتصفح ده ⚠️');
+            if (toggle) toggle.checked = false;
+            return;
+        }
+        const hwOk = await checkWebAuthnPlatformAvailable();
+        if (!hwOk) {
+            showToast('جهازك لا يحتوي على مستشعر بصمة ⚠️');
+            if (toggle) toggle.checked = false;
+            return;
+        }
+        try {
+            const userId = new Uint8Array(16);
+            crypto.getRandomValues(userId);
+            const challenge = new Uint8Array(32);
+            crypto.getRandomValues(challenge);
+            const cred = await navigator.credentials.create({
+                publicKey: {
+                    challenge,
+                    rp: { name: 'منصة الإنتاجية المتقدمة' },
+                    user: { id: userId, name: 'app-lock', displayName: 'قفل التطبيق' },
+                    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+                    authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+                    timeout: 60000,
+                    attestation: 'none'
+                }
+            });
+            localStorage.setItem('webauthn_cred_id', _bufferToB64url(cred.rawId));
+            localStorage.setItem('app_lock_biometric_enabled', '1');
+            showToast('اتفعّل الفتح بالبصمة 🔓');
+        } catch (e) {
+            if (toggle) toggle.checked = false;
+            showToast(e && e.name === 'NotAllowedError' ? 'محصلش تحقق من البصمة ❌' : 'تعذّر تفعيل البصمة ⚠️');
         }
     }
 
     // auto = true يعني الاستدعاء بقى تلقائي لحظة ظهور شاشة القفل (مش المستخدم دوس زرار بنفسه)
-    function triggerBiometricUnlock(auto) {
-        if (!(window.AndroidNative && typeof AndroidNative.authenticateWithBiometric === 'function')) return;
-        window.onAndroidBiometricResult = function (success, unavailable) {
-            if (success) {
-                sessionStorage.setItem('app_unlocked', '1');
-                const s = document.getElementById('appLockScreen');
-                if (s) s.classList.remove('show');
-                return;
-            }
-            if (unavailable) {
-                // البصمة بقت مش متاحة (مثلاً المستخدم مسحها من إعدادات الجهاز) — نلغي الخيار
-                // ونسيب المستخدم يفتح بكلمة المرور لو مفعّلة، أو نفتح التطبيق عادي لو مفيش قفل تاني
-                localStorage.removeItem('app_lock_biometric_enabled');
-                const bioBtn = document.getElementById('appLockBiometricBtn');
-                if (bioBtn) bioBtn.style.display = 'none';
-                if (isAppLockEnabled()) {
-                    const passArea = document.getElementById('appLockPasswordArea');
-                    if (passArea) passArea.style.display = 'block';
-                    const errorEl = document.getElementById('appLockError');
-                    if (errorEl) errorEl.innerText = 'البصمة بقت مش متاحة، استخدم كلمة المرور ⚠️';
-                } else {
+    async function triggerBiometricUnlock(auto) {
+        if (window.AndroidNative && typeof AndroidNative.authenticateWithBiometric === 'function') {
+            window.onAndroidBiometricResult = function (success, unavailable) {
+                if (success) {
                     sessionStorage.setItem('app_unlocked', '1');
                     const s = document.getElementById('appLockScreen');
                     if (s) s.classList.remove('show');
+                    return;
                 }
+                if (unavailable) {
+                    _disableBiometricAfterUnavailable();
+                    return;
+                }
+                if (!auto) {
+                    const errorEl = document.getElementById('appLockError');
+                    if (errorEl) errorEl.innerText = 'محصلش تحقق من البصمة ❌';
+                }
+                // في المحاولة التلقائية لو المستخدم لغى الـ prompt، بنسيبه في شاشة القفل يجرب
+                // تاني بالزرار أو يستخدم كلمة المرور لو مفعّلة
+            };
+            AndroidNative.authenticateWithBiometric('unlock');
+            return;
+        }
+
+        // مسار الويب (WebAuthn)
+        if (!isWebAuthnSupported()) return;
+        const credId = localStorage.getItem('webauthn_cred_id');
+        if (!credId) { _disableBiometricAfterUnavailable(); return; }
+        try {
+            const challenge = new Uint8Array(32);
+            crypto.getRandomValues(challenge);
+            const assertion = await navigator.credentials.get({
+                publicKey: {
+                    challenge,
+                    allowCredentials: [{ id: _b64urlToBuffer(credId), type: 'public-key' }],
+                    userVerification: 'required',
+                    timeout: 60000
+                }
+            });
+            if (assertion) {
+                sessionStorage.setItem('app_unlocked', '1');
+                const s = document.getElementById('appLockScreen');
+                if (s) s.classList.remove('show');
+            }
+        } catch (e) {
+            if (e && (e.name === 'InvalidStateError' || e.name === 'NotSupportedError')) {
+                _disableBiometricAfterUnavailable();
                 return;
             }
             if (!auto) {
                 const errorEl = document.getElementById('appLockError');
                 if (errorEl) errorEl.innerText = 'محصلش تحقق من البصمة ❌';
             }
-            // في المحاولة التلقائية لو المستخدم لغى الـ prompt، بنسيبه في شاشة القفل يجرب
+            // لو المستخدم لغى الـ prompt (NotAllowedError) في محاولة تلقائية، بنسيبه يجرب
             // تاني بالزرار أو يستخدم كلمة المرور لو مفعّلة
-        };
-        AndroidNative.authenticateWithBiometric('unlock');
+        }
+    }
+
+    // البصمة بقت مش متاحة (مثلاً المستخدم مسحها من إعدادات الجهاز، أو مسح بيانات المتصفح) —
+    // نلغي الخيار ونسيب المستخدم يفتح بكلمة المرور لو مفعّلة، أو نفتح التطبيق عادي لو مفيش قفل تاني
+    function _disableBiometricAfterUnavailable() {
+        localStorage.removeItem('app_lock_biometric_enabled');
+        localStorage.removeItem('webauthn_cred_id');
+        const bioBtn = document.getElementById('appLockBiometricBtn');
+        if (bioBtn) bioBtn.style.display = 'none';
+        if (isAppLockEnabled()) {
+            const passArea = document.getElementById('appLockPasswordArea');
+            if (passArea) passArea.style.display = 'block';
+            const errorEl = document.getElementById('appLockError');
+            if (errorEl) errorEl.innerText = 'البصمة بقت مش متاحة، استخدم كلمة المرور ⚠️';
+        } else {
+            sessionStorage.setItem('app_unlocked', '1');
+            const s = document.getElementById('appLockScreen');
+            if (s) s.classList.remove('show');
+        }
     }
 
     async function tryUnlockApp() {
